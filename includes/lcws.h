@@ -4,6 +4,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define LCWS_VER_MAJ 0
+#define LCWS_VER_MIN 1
+#define LCWS_VER_VENDOR "cat"
+
+#define LCWS_VER_STR LCWS_VER_MAJ # "." LCWS_VER_MIN # "_" LCWS_VER_VENDOR
+
 #define LCWS_CONTINUATION_FRAME 0x0
 #define LCWS_TEXT_FRAME 0x1
 #define LCWS_BIN_FRAME 0x2

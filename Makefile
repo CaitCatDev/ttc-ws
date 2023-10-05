@@ -11,7 +11,7 @@ DISINCLUDES=-I /usr/include/json-c/ -ljson-c -lssl -lcrypto
 ENDTARGET=endian
 ENDINCLUDES=-lssl -lcrypto
 
-INSTALL_PREFIX=/usr/local/
+INSTALL_PREFIX=/usr/local
 
 .c.o:
 	$(CC) $(INCLUDES) -c -o $@ $<
@@ -33,7 +33,12 @@ $(ENDTARGET): $(OBJS) examples/endian.c
 	$(CC) $(INCLUDES) $(ENDINCLUDES) $(OBJS) examples/endian.c -o $@
 
 install:
-	install 
+	install -m 755 $(TARGET) $(INSTALL_PREFIX)/lib/liblcws.so.0.1
+	install -m 644 includes/lcws.h $(INSTALL_PREFIX)/include/lcws.h
+	ln -s $(INSTALL_PREFIX)/lib/liblcws.so.0.1 $(INSTALL_PREFIX)/lib/liblcws.so
+
+uninstall:
+	rm $(INSTALL_PREFIX)/lib/liblcws.so.0.1 $(INSTALL_PREFIX)/lib/liblcws.so $(INSTALL_PREFIX)/include/lcws.h
 
 clean:
 	rm $(OBJS) $(TARGET) $(DISTARGET) $(ENDTARGET)
