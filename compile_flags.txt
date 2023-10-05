@@ -1,0 +1,5 @@
+-I
+./includes
+-I 
+/usr/include/json-c
+-std=c99
