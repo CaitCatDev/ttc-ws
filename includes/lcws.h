@@ -69,6 +69,8 @@ void lcws_free(lcws_t *ws);
 lcws_t *lcws_create_from_socket(int socket, const char *host);
 lcws_t *lcws_create_from_host(const char *host, const char *port);
 
+void lcws_buffer_free(lcws_buffer_t *buf);
+
 #ifndef LCWL_DISABLE_SSL
 
 int lcwss_write(lcwss_t *socket, lcws_wrreq_t request);

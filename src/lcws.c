@@ -291,6 +291,11 @@ lcws_buffer_t *lcws_read(lcws_t *ws) {
 	return buffer;
 }
 
+void lcws_buffer_free(lcws_buffer_t *buf) {
+	free(buf->data);
+	free(buf);
+}
+
 #ifndef LCWL_DISABLE_SSL
 
 lcws_buffer_t *lcwss_read(lcwss_t *ws) {
