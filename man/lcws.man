@@ -18,6 +18,7 @@ Lightweight C WebSocket library (lcws, -llcws)
 .B "void lcwss_free(lcwss_t *ws);"
 .B "lcwss_t *lcwss_create_from_SSL(SSL *socket, const char *host);"
 .B "lcwss_t *lcwss_create_from_host(const char *host, const char *port, SSL_CTX *ctx);"
+.B "void lcws_buffer_free(lcws_buffer_t *buf);"
 .PP
 
 .SH DESCRIPTION
@@ -29,12 +30,12 @@ Lightweight C WebSocket library (lcws, -llcws)
 
 .B lcws_write, lcwss_write. These functions take in a lcws_wrreq_t structure and will write the data provided in that structure to the underlying socket. Applying any rules provided in the write request, e.g. masking the data, setting final or opcode bits, setting length.
 
-.B lcws_free, lcwss_free. These functions free lcws_t and lcwss_t structure pointers. These functions return a void aka nothing as they SHOULD NOT FAIL unless you provide a bad pointer. Or a pointer to a type that is not lcws_t or lcwss_t.
+.B lcws_free, lcwss_free, lcws_buffer_free. These functions free lcws_t, lcwss_t and lcws_buffer_t structure pointers. These functions return a void aka nothing as they SHOULD NOT FAIL unless you provide a bad pointer. Or a pointer to a type that is not lcws_t or lcwss_t.
 
 .SH RETURN VALUES
 .nf
 .PP
-.B lcws_free(), lcwss_free() - returns nothing
+.B lcws_free(), lcwss_free(), lcws_buffer_free() - returns nothing
 .B lcws_write(), lcwss_write() - returns int see below.
 .B 	0 = success.
 .B 	-1 = error check error no. 
