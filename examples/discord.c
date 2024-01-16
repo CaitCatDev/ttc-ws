@@ -14,8 +14,7 @@
 
 #include <pthread.h>
 
-#include "lcws.h"
-#include "utils.h"
+#include "ttc-ws.h"
 #include <signal.h>
 
 int setup_socket(const char *host, const char *port) {
@@ -72,13 +71,13 @@ SSL *ssl_setup(SSL_CTX *ctx, int fd) {
 	return ssl;
 }
 
-void discord_identify(lcwss_t *wss, const char *discord_token) {
+void discord_identify(ttc_wss_t *wss, const char *discord_token) {
 	json_object *login, *data, *opcode, *token, 
 				*properties, *os, *browser, *device, *intents,
 				*presence, *status, *afk, *activities,
 				*name, *type, *activity, *state, *emoji,
 				*emjname;
-	lcws_wrreq_t login_request;
+	ttc_ws_wrreq_t login_request;
 
 	activities = json_object_new_array();
 	name = json_object_new_string("I love C");
@@ -140,14 +139,14 @@ void discord_identify(lcwss_t *wss, const char *discord_token) {
 	
 	printf("%s\n", json_object_to_json_string(login));
 
-	lcwss_write(wss, login_request);
+	ttc_wss_write(wss, login_request);
 
 	json_object_put(login);
 }
 
-void discord_heartbeat(lcwss_t *wss, int sequence) {
+void discord_heartbeat(ttc_wss_t *wss, int sequence) {
 	static json_object *op, *d, *heartbeat;
-	static lcws_wrreq_t heartreq;
+	static ttc_ws_wrreq_t heartreq;
 
 	heartbeat = json_object_new_object();
 	d = json_object_new_int(sequence);
@@ -162,7 +161,7 @@ void discord_heartbeat(lcwss_t *wss, int sequence) {
 	heartreq.data = json_object_get_string(heartbeat);
 	heartreq.len = strlen(heartreq.data);
 
-	lcwss_write(wss, heartreq);
+	ttc_wss_write(wss, heartreq);
 	json_object_put(heartbeat);
 }
 
@@ -199,14 +198,14 @@ typedef struct {
 	const char *token;
 	const char *sessionid;
 	SSL_CTX *sslctx;
-	lcwss_t *wss;
+	ttc_wss_t *wss;
 } discord_ctx;
 
-static lcwss_t *gwss;
+static ttc_wss_t *gwss;
 
 void discord_reconnect(discord_ctx *ctx) {
 	json_object *resume, *op, *seq, *d, *sessionid, *token;
-	lcws_wrreq_t wreq;
+	ttc_ws_wrreq_t wreq;
 
 	resume = json_object_new_object();
 	sessionid = json_object_new_string(ctx->sessionid);
@@ -221,26 +220,26 @@ void discord_reconnect(discord_ctx *ctx) {
 	json_object_object_add(resume, "op", op);
 	json_object_object_add(resume, "d", d);
 	
-	lcwss_free(gwss);
+	ttc_wss_free(gwss);
 
-	lcwss_t *wss = lcwss_create_from_host(ctx->resumeurl, "443", ctx->sslctx);
+	ttc_wss_t *wss = ttc_wss_create_from_host(ctx->resumeurl, "443", ctx->sslctx);
 	
 	wreq.data = json_object_to_json_string(resume);
 	wreq.len = strlen(json_object_to_json_string(resume));
 	wreq.fin = 1;
 	wreq.mask = 1;
 	wreq.res = 0;
-	wreq.opcode = LCWS_TEXT_FRAME;
+	wreq.opcode = TTC_WS_TEXT_FRAME;
 	
 	printf("Resuming: %s\n", wreq.data);
 
-	lcwss_write(wss, wreq);
+	ttc_wss_write(wss, wreq);
 
 	json_object_put(resume);
 	gwss = wss;
 }
 
-void parse_message(lcws_buffer_t *buffer, discord_ctx *ctx, pthread_t *heartthread) {
+void parse_message(ttc_ws_buffer_t *buffer, discord_ctx *ctx, pthread_t *heartthread) {
 	json_object *response = json_tokener_parse(buffer->data);
 	json_object *op = json_object_object_get(response, "op");
 	int opint = json_object_get_int(op);
@@ -268,7 +267,7 @@ void sigint_handle(int signo) {
 
 void *ws_read(void *vargp) {
 	discord_ctx *ctx = vargp;
-	lcws_buffer_t *buffer;
+	ttc_ws_buffer_t *buffer;
 	pthread_t heartthread;
 
 	gwss = ctx->wss;
@@ -276,16 +275,16 @@ void *ws_read(void *vargp) {
 
 	while(running) {
 
-		buffer = lcwss_read(gwss);
+		buffer = ttc_wss_read(gwss);
 	
 	
 		parse_message(buffer, ctx, &heartthread);
 		
-		if(buffer->opcode == LCWS_CONN_CLOSE_FRAME) {
-			printf("%d\n", endian_swap16(((uint16_t*)buffer->data)[0]));	
+		if(buffer->opcode == TTC_WS_CONN_CLOSE_FRAME) {
+			printf("Close Code: %d\n", buffer->close_code);	
 			
 
-			if(endian_swap16(((uint16_t*)buffer->data)[0]) == 1001) {
+			if(buffer->close_code == 1001) {
 				printf("Attempting Reconnect\n");
 				pthread_cancel(heartthread);
 				discord_reconnect(ctx);
@@ -322,7 +321,7 @@ int main(int argc, char **argv) {
 
 	ssl = ssl_setup(ctx, sock);
 
-	gwss = lcwss_create_from_SSL(ssl, "gateway.discord.gg");
+	gwss = ttc_wss_create_from_SSL(ssl, "gateway.discord.gg");
 
 	char buf[2048];
 
@@ -333,7 +332,7 @@ int main(int argc, char **argv) {
 
 	discord_identify(gwss, token);
 
-	lcws_buffer_t *buffer = lcwss_read(gwss);
+	ttc_ws_buffer_t *buffer = ttc_wss_read(gwss);
 	printf("%s\n", buffer->data);
 	json_object *ready, *d, *resumeurl, *sessionid;
 	
@@ -364,7 +363,7 @@ int main(int argc, char **argv) {
 
 	json_object_put(ready);
 	free(token);
-	lcwss_free(gwss);
+	ttc_wss_free(gwss);
 	SSL_CTX_free(ctx);
 
 	return 0;
