@@ -15,7 +15,7 @@
 #include <unistd.h>
 #include <pthread.h>
 
-#include "ttc-ws.h"
+#include <ttc_ws.h>
 
 /*TODO: Turn into one structure*/
 struct ttc_ws {

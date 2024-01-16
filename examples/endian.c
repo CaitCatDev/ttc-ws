@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
-#include <ttc-ws.h>
+#include <ttc_ws.h>
 
 int main() {
 	uint16_t number = 0x0010;

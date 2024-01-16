@@ -1,0 +1,83 @@
+.TH LCWS 3 1-OCT-2023 ttc_ws-manpages
+.SH NAME 
+ttc_ws_write, ttc_ws_read, ttc_ws_free, ttc_ws_create_from_socket, ttc_ws_create_from_host, ttc_wss_write, ttc_wss_read, ttc_wss_free, ttc_wss_create_from_SSL ttc_wss_create_from_host
+
+.SH LIBRARY
+Lightweight C WebSocket library (ttc_ws, -lttc_ws)
+
+.SH SYNOPSIS
+.nf
+.PP
+.B "int ttc_ws_write(ttc_wss_t *socket , ttc_ws_wrreq_t request);"
+.B "ttc_ws_buffer_t *ttc_ws_read(ttc_wss_t *socket);"
+.B "void ttc_ws_free(ttc_ws_t *ws);"
+.B "ttc_ws_t *ttc_ws_create_from_socket(int socket, const char *host);"
+.B "ttc_ws_t *ttc_ws_create_from_host(const char *host, const char *port);"
+.B "int ttc_wss_write(ttc_wss_t *socket, ttc_ws_wrreq_t request);"
+.B "ttc_ws_buffer_t *ttc_wss_read(ttc_wss_t *socket);"
+.B "void ttc_wss_free(ttc_wss_t *ws);"
+.B "ttc_wss_t *ttc_wss_create_from_SSL(SSL *socket, const char *host);"
+.B "ttc_wss_t *ttc_wss_create_from_host(const char *host, const char *port, SSL_CTX *ctx);"
+.B "void ttc_ws_buffer_free(ttc_ws_buffer_t *buf);"
+.PP
+
+.SH DESCRIPTION
+.B The functions provided here give access to WebSockets in a relatively simple and lightweight way to interface with these sockets. Intended to provide a more simple way to work with these sockets indepentant of any other external libraries barring openssl when compiled with SSL support.
+
+.B ttc_ws_create_from_socket, ttc_wss_create_from_SSL, ttc_ws_create_from_host, ttc_wss_create_from_host. Functions all create ttc_ws_t and ttc_wss_t websocket structures intended to be passed to websocket read and write functions. They return a pointer to the ttc_ws_t and ttc_wss_t structures and will return NULL on an error(errno should be set from system calls we call).
+
+.B ttc_ws_read, ttc_wss_read. Both these functions return a pointer a ttc_ws_buffer_t structure containing the websocket frame opcode, data and other information.
+
+.B ttc_ws_write, ttc_wss_write. These functions take in a ttc_ws_wrreq_t structure and will write the data provided in that structure to the underlying socket. Applying any rules provided in the write request, e.g. masking the data, setting final or opcode bits, setting length.
+
+.B ttc_ws_free, ttc_wss_free, ttc_ws_buffer_free. These functions free ttc_ws_t, ttc_wss_t and ttc_ws_buffer_t structure pointers. These functions return a void aka nothing as they SHOULD NOT FAIL unless you provide a bad pointer. Or a pointer to a type that is not ttc_ws_t or ttc_wss_t.
+
+.SH RETURN VALUES
+.nf
+.PP
+.B ttc_ws_free(), ttc_wss_free(), ttc_ws_buffer_free() - returns nothing
+.B ttc_ws_write(), ttc_wss_write() - returns int see below.
+.B 	0 = success.
+.B 	-1 = error check error no. 
+
+.B ttc_ws_read(), ttc_wss_read() - returns pointer to ttc_ws_buffer_t:
+.B	VALID_PTR = success.
+.B	NULL = Error.
+
+.B ttc_ws_create_from_socket(), ttc_ws_create_from_host - Returns a pointer to ttc_ws_t 
+.B	VALID_PTR = success.
+.B	NULL = Error.
+
+.B ttc_wss_create_from_SSL(), ttc_wss_create_from_host - Returns a pointer to ttc_wss_t 
+.B	VALID_PTR = success.
+.B	NULL = Error.
+.PP
+
+.SH DATA STRUCTURES
+.nf
+.PP
+.B "ttc_ws_wrreq_t is a public data structure intended to be used by client programs using these libraries."
+	ttc_ws_wrreq_t {
+		bool fin; /*Final part of this message*/
+		bool mask; /*data should be masked before it's sent*/
+		uint8_t res: 3; /*Reserved extensions*/
+		uint8_t opcode: 4; /*Websocket frame opcode*/
+		size_t len; /*Length of data field*/
+		char *data; /*Data to be written*/
+	};
+
+.B "ttc_ws_buffer_t is a public data structure return by ttc_ws_read functions. Containing the data returned by a websocket read."
+	typedef struct ttc_ws_buffer {
+		bool fin; /*final part of this message*/
+		uint8_t opcode; /*Websocket frame opcode*/
+		char *data; /*masked data*/
+		size_t len; /*length of data*/
+		char mask[4]; /*Mask bytes*/
+		uint16_t close_code; /*close code set if frame close*/
+	} ttc_ws_buffer_t;
+
+.B "ttc_ws_t and ttc_wss_t is an opaque pointer to a ttc_ws_t websocket data structure intended to be passed to internal library functions client programs should not attempt to dereference it. Instead passing it to functions that take it as an argument"
+.SH SEE ALSO
+.BR SSL_new(3)
+.BR SSL_CTX_new(3)
+.BR ssl(7)
