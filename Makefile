@@ -7,9 +7,9 @@ CC=clang
 CFLAGS=$(INCLUDES) -O3
 
 DISTARGET=disbot
-DISINCLUDES=-I /usr/include/json-c/ -ljson-c -lssl -lcrypto
+DISINCLUDES=-I /usr/include/json-c/ -lttc-http -ljson-c -lssl -lcrypto
 ENDTARGET=endian
-ENDINCLUDES=-lssl -lcrypto
+ENDINCLUDES=-lssl -lttc-http -lcrypto
 
 INSTALL_PREFIX=/usr/local
 
@@ -19,7 +19,7 @@ INSTALL_PREFIX=/usr/local
 all: $(TARGET) $(DISTARGET) $(ENDTARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) $(INCLUDES) -shared $(OBJS) -o $@
+	$(CC) $(INCLUDES) -shared $(OBJS) -o $@ 
 
 ##########
 ## Tests have ttc_ws.so code is statically 
@@ -32,13 +32,13 @@ $(DISTARGET): $(OBJS) examples/discord.c
 $(ENDTARGET): $(OBJS) examples/endian.c
 	$(CC) $(INCLUDES) $(ENDINCLUDES) $(OBJS) examples/endian.c -o $@
 
-install:
-	install -m 755 $(TARGET) $(INSTALL_PREFIX)/lib/libttc_ws.so.0.1
-	install -m 644 includes/ttc_ws.h $(INSTALL_PREFIX)/include/ttc_ws.h
-	ln -s $(INSTALL_PREFIX)/lib/libttc_ws.so.0.1 $(INSTALL_PREFIX)/lib/libttc_ws.so
+install: all
+	install -m 755 $(TARGET) $(INSTALL_PREFIX)/lib/libttc-ws.so.0.1
+	install -m 644 includes/ttc-ws.h $(INSTALL_PREFIX)/include/ttc-ws.h
+	ln -s $(INSTALL_PREFIX)/lib/libttc-ws.so.0.1 $(INSTALL_PREFIX)/lib/libttc-ws.so
 
 uninstall:
-	rm $(INSTALL_PREFIX)/lib/libttc_ws.so.0.1 $(INSTALL_PREFIX)/lib/libttc_ws.so $(INSTALL_PREFIX)/include/ttc_ws.h
+	rm $(INSTALL_PREFIX)/lib/libttc-ws.so.0.1 $(INSTALL_PREFIX)/lib/libttc-ws.so $(INSTALL_PREFIX)/include/ttc.ws.h
 
 clean:
 	rm $(OBJS) $(TARGET) $(DISTARGET) $(ENDTARGET)

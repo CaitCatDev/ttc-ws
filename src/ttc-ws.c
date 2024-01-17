@@ -15,7 +15,8 @@
 #include <unistd.h>
 #include <pthread.h>
 
-#include <ttc_ws.h>
+#include <ttc-ws.h>
+#include <ttc-http.h>
 
 /*TODO: Turn into one structure*/
 struct ttc_ws {
@@ -170,11 +171,12 @@ char *ttc_b64_encode(const uint8_t *data, size_t len) {
 
 /*Create a non SSH webssocket from a socket fd*/
 ttc_ws_t *ttc_ws_create_from_socket(int sockfd, const char *host) {
+	ttc_http_response_t *response;
 	uint8_t *ws_key_raw;
 	char *b64key, *request;
 	int length;
-	char buf[2048];
 	
+
 	ttc_ws_t *ws_out = calloc(1, sizeof(ttc_ws_t));
 	if(!ws_out) {
 		printf("%s: allocation error %s\n", __func__, strerror(errno));
@@ -217,8 +219,14 @@ ttc_ws_t *ttc_ws_create_from_socket(int sockfd, const char *host) {
 	printf("%s\n", request);
 	send(sockfd, request, length, 0);
 
-	recv(sockfd, buf, 2048, 0);
-
+	response = ttc_http_get_response(sockfd);
+	if(response->status != 101) {
+		printf("ttc-ws: websocket request responded with invalid status code %d\n", response->status);
+		free(ws_out);
+		ws_out = NULL;
+	}
+	
+	ttc_http_response_free(response);
 	free(b64key);
 	free(ws_key_raw);
 	free(request);
@@ -230,8 +238,6 @@ ttc_ws_t *ttc_ws_create_from_host(const char *host, const char *port) {
 	int sockfd, res;
 	struct addrinfo *info;
 	
-	printf("getaddrinfo(%s, %s, NULL, %p);", host, port, &info);
-
 	res = getaddrinfo(host, port, NULL, &info);
 	if(res != 0) {
 		printf("%s(%d)(%s): %m\n", __FUNCTION__, __LINE__, gai_strerror(res));
@@ -565,11 +571,14 @@ int ttc_wss_write(ttc_wss_t *ws, ttc_ws_wrreq_t req) {
 }
 
 ttc_wss_t *ttc_wss_create_from_SSL(SSL *sslsock, const char *host) {
+	ttc_http_response_t *response;
+	ttc_wss_t *ws_out;
 	uint8_t *ws_key_raw;
 	char *b64key, *request;
 	int length;
-	char buf[2048];
-	ttc_wss_t *ws_out = calloc(1, sizeof(ttc_wss_t));
+	
+	ws_out = calloc(1, sizeof(ttc_wss_t));
+	
 	if(!request) {
 		printf("TTC_WS_ERROR: (%s) Allocation Error\n", __func__);
 		return NULL;
@@ -609,9 +618,15 @@ ttc_wss_t *ttc_wss_create_from_SSL(SSL *sslsock, const char *host) {
 	snprintf(request, length+1, ws_handshake_fmt, "wss", host, b64key, host);
 
 	SSL_write(sslsock, request, length);
-
-	SSL_read(sslsock, buf, 2048);
-
+	
+	response = ttc_https_get_response(sslsock);
+	if(response->status != 101) {
+		printf("ttc-ws: websocket request responded with invalid status code %d\n", response->status);
+		free(ws_out);
+		ws_out = NULL;
+	}
+	
+	ttc_http_response_free(response);
 	free(b64key);
 	free(ws_key_raw);
 	free(request);
@@ -634,8 +649,6 @@ ttc_wss_t *ttc_wss_create_from_host(const char *host, const char *port, SSL_CTX 
 	int sockfd, res;
 	struct addrinfo *info;
 	
-	printf("getaddrinfo(%s, %s, NULL, %p);", host, port, &info);
-
 	res = getaddrinfo(host, port, NULL, &info);
 	if(res != 0) {
 		printf("%s(%d)(%s): %m\n", __FUNCTION__, __LINE__, gai_strerror(res));
