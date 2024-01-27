@@ -21,19 +21,19 @@
 #define TTC_WS_FRAME_FINAL 0x80;
 
 enum TTC_WS_CLOSE_CODES {
-	TTC_WS_CLOSE_NORMAL = 1000,
-	TTC_WS_GOING_AWAY = 1001,
-	TTC_WS_PROTOCOL_ERR = 1002,
-	TTC_WS_INVALID_DATA = 1003,
-	TTC_WS_CLOSE_RES = 1004,
-	TTC_WS_CLOSE_RES2 = 1005,
-	TTC_WS_CLOSE_RES_ABNORMAL_CLOSE = 1006,
-	TTC_WS_DATA_TYPE_ERROR = 1007,
-	TTC_WS_POLICY_VIOLATION = 1008,
-	TTC_WS_MESSAGE_TO_BIG = 1009,
-	TTC_WS_EXT_NOT_SUPPORTED = 1010,
-	TTC_WS_REQUEST_FAILED = 1011,
-	TTC_WS_TLS_FAILURE_RES = 1015,
+	TtcWsCloseNormal = 1000,
+	TtcWsGoingAway = 1001,
+	TtcWsProtocolErr = 1002,
+	TtcWsInvalidData = 1003,
+	TtcWsCloseRes = 1004,
+	TtcWsCloseRes2 = 1005,
+	TtcWsCloseResAbnormal = 1006,
+	TtcWsDataTypeError = 1007,
+	TtcWsPolicyViolation = 1008,
+	TtcWsMessageToBig = 1009,
+	TtcWsExtNotSupported = 1010,
+	TtcWsRequestFailed = 1011,
+	TtcWsTLSFailureRes = 1015,
 };
 
 typedef struct ttc_ws_wrreq {

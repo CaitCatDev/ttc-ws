@@ -7,19 +7,19 @@ CC=clang
 CFLAGS=$(INCLUDES) -O3
 
 DISTARGET=disbot
-DISINCLUDES=-I /usr/include/json-c/ -lttc-http -ljson-c -lssl -lcrypto
+DISINCLUDES=-I /usr/include/json-c/ -lttc-log -lttc-http -ljson-c -lssl -lcrypto
 ENDTARGET=endian
-ENDINCLUDES=-lssl -lttc-http -lcrypto
+ENDINCLUDES=-lssl -lttc-log -lttc-http -lcrypto
 
 INSTALL_PREFIX=/usr/local
 
 .c.o:
-	$(CC) $(INCLUDES) -c -o $@ $<
+	$(CC) $(INCLUDES) -g -O0 -c -o $@ $<
 
 all: $(TARGET) $(DISTARGET) $(ENDTARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) $(INCLUDES) -shared $(OBJS) -o $@ 
+	$(CC) $(INCLUDES) -shared -g -O0 $(OBJS) -o $@ 
 
 ##########
 ## Tests have ttc_ws.so code is statically 

@@ -17,6 +17,7 @@
 
 #include <ttc-ws.h>
 #include <ttc-http.h>
+#include <ttc-log.h>
 
 /*TODO: Turn into one structure*/
 struct ttc_ws {
@@ -95,14 +96,14 @@ static uint8_t *ttc_random_array(size_t len) {
 
 	/*Sanity check the users input*/
 	if(len == 0) {
-		printf("%s: Invalid parameter passed in\n", __func__);
+		TTC_LOG_WARN("%s: Invalid parameter passed in\n", __func__);
 		return NULL;
 	}
 	
 
 	output = calloc(sizeof(uint8_t), len);
 	if(output == NULL) {
-		printf("%s: calloc failed %s\n", __func__, strerror(errno));
+		TTC_LOG_ERROR("%s: calloc failed %s\n", __func__, strerror(errno));
 		return NULL;
 	}
 
@@ -139,7 +140,7 @@ char *ttc_b64_encode(const uint8_t *data, size_t len) {
 	
 	if(!data || !len) {
 		errno = -EINVAL;
-		printf("%s: Invlaid input\n", __func__);
+		TTC_LOG_WARN("%s: Invlaid input\n");
 		return NULL;
 	}
 
@@ -147,7 +148,7 @@ char *ttc_b64_encode(const uint8_t *data, size_t len) {
 	outstr = calloc(sizeof(char), outlen + 1); /*allocate length +1*/
 	
 	if(outstr == NULL) {
-		printf("%s: calloc error %s\n", __func__, strerror(errno));
+		TTC_LOG_ERROR("%s: calloc error %s\n", strerror(errno));
 		return NULL;
 	}
 
@@ -179,7 +180,7 @@ ttc_ws_t *ttc_ws_create_from_socket(int sockfd, const char *host) {
 
 	ttc_ws_t *ws_out = calloc(1, sizeof(ttc_ws_t));
 	if(!ws_out) {
-		printf("%s: allocation error %s\n", __func__, strerror(errno));
+		TTC_LOG_ERROR("%s: allocation error %s\n", __func__, strerror(errno));
 		return NULL; /*Allocation Error*/
 	}
 
@@ -192,14 +193,14 @@ ttc_ws_t *ttc_ws_create_from_socket(int sockfd, const char *host) {
 
 	ws_key_raw = (uint8_t *)ttc_random_array(16);
 	if(!ws_key_raw) {
-		printf("%s: allocation error %s\n", __func__, strerror(errno));
+		TTC_LOG_ERROR("%s: allocation error %s\n", __func__, strerror(errno));
 		free(ws_out);
 		return NULL;
 	}
 
 	b64key = ttc_b64_encode(ws_key_raw, 16);
 	if(!b64key) {
-		printf("%s: allocation error %s\n", __func__, strerror(errno));
+		TTC_LOG_ERROR("%s: allocation error %s\n", __func__, strerror(errno));
 		free(ws_key_raw);
 		free(ws_out);
 	}
@@ -208,7 +209,7 @@ ttc_ws_t *ttc_ws_create_from_socket(int sockfd, const char *host) {
 
 	request = calloc(1, length + 1);
 	if(!request) {
-		printf("%s: allocation error %s\n", __func__, strerror(errno));
+		TTC_LOG_ERROR("%s: allocation error %s\n", __func__, strerror(errno));
 		free(b64key);
 		free(ws_key_raw);
 		free(ws_out);
@@ -216,12 +217,12 @@ ttc_ws_t *ttc_ws_create_from_socket(int sockfd, const char *host) {
 
 	snprintf(request, length+1, ws_handshake_fmt, "ws", host, b64key, host);
 
-	printf("%s\n", request);
+	TTC_LOG_DEBUG("Sending: %s\n", request);
 	send(sockfd, request, length, 0);
 
 	response = ttc_http_get_response(sockfd);
 	if(response->status != 101) {
-		printf("ttc-ws: websocket request responded with invalid status code %d\n", response->status);
+		TTC_LOG_WARN("ttc-ws: websocket request responded with invalid status code %d\n", response->status);
 		free(ws_out);
 		ws_out = NULL;
 	}
@@ -240,13 +241,13 @@ ttc_ws_t *ttc_ws_create_from_host(const char *host, const char *port) {
 	
 	res = getaddrinfo(host, port, NULL, &info);
 	if(res != 0) {
-		printf("%s(%d)(%s): %m\n", __FUNCTION__, __LINE__, gai_strerror(res));
+		TTC_LOG_WARN("getaddrinfo error: %s", gai_strerror(res));
 		return NULL;
 	}
 
 	sockfd = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
 	if(sockfd < 0) {
-		printf("%s(%d): %m\n", __FUNCTION__, __LINE__);
+		TTC_LOG_ERROR("socket error: %s", strerror(errno));
 		freeaddrinfo(info);
 		return NULL;	
 	}
@@ -254,7 +255,7 @@ ttc_ws_t *ttc_ws_create_from_host(const char *host, const char *port) {
 	res = connect(sockfd, info->ai_addr, (int)info->ai_addrlen);
 	freeaddrinfo(info);
 	if(res != 0) {
-		printf("%s(%d): %m\n", __FUNCTION__, __LINE__);
+		TTC_LOG_ERROR("connect error: %s", strerror(errno));
 		close(sockfd);
 		return NULL;	
 	}
@@ -281,7 +282,7 @@ int ttc_ws_write(ttc_ws_t *ws, ttc_ws_wrreq_t req) {
 	int ext_pos;
 
 	if(ws->closed) {
-		printf("TTC_WS_ERROR: WS is closed\n");
+		TTC_LOG_WARN("TTC_WS_ERROR: WS is closed\n");
 		return 1;
 	}
 	
@@ -351,18 +352,18 @@ ttc_ws_buffer_t *ttc_ws_read(ttc_ws_t *ws) {
 	uint64_t len64;
 
 	if(ws == NULL) {
-		printf("TTC_WS_ERROR: WS is NULL");
+		TTC_LOG_ERROR("TTC_WS_ERROR: WS is NULL");
 		return NULL;
 	}
 
 	if(ws->closed) {
-		printf("TTC_WS_ERROR: WS is closed\n");
+		TTC_LOG_WARN("TTC_WS_WARN: WS is closed\n");
 		return NULL;
 	}
 
 	buffer = calloc(1, sizeof(*buffer));
 	if(!buffer) {
-		printf("TTC_WS_ERROR: allocation error\n");
+		TTC_LOG_ERROR("TTC_WS_ERROR: allocation error\n");
 		return NULL;
 	}	
 
@@ -400,7 +401,7 @@ ttc_ws_buffer_t *ttc_ws_read(ttc_ws_t *ws) {
 
 	buffer->data = calloc(1, buffer->len + 1);
 	if(!buffer->data) {
-		printf("TTC_WS_ERROR: buffer data error\n");
+		TTC_LOG_ERROR("buffer allocation error\n");
 		free(buffer);
 		return NULL;
 	}
@@ -428,20 +429,21 @@ ttc_ws_buffer_t *ttc_wss_read(ttc_wss_t *ws) {
 	uint8_t opcode, len;
 	uint16_t len16;
 	uint64_t len64;
+	uint64_t readin;
 
 	if(ws == NULL) {
-		printf("TTC_WS_ERROR: WS is NULL");
+		TTC_LOG_ERROR("WS is NULL");
 		return NULL;
 	}
 
 	if(ws->closed) {
-		printf("TTC_WS_ERROR: WS is closed\n");
+		TTC_LOG_WARN("WS is closed\n");
 		return NULL;
 	}
 
 	buffer = calloc(1, sizeof(*buffer));
 	if(!buffer) {
-		printf("TTC_WS_ERROR: Allocation Error\n");
+		TTC_LOG_ERROR("Allocation Error\n");
 		return NULL;
 	}
 
@@ -479,19 +481,24 @@ ttc_ws_buffer_t *ttc_wss_read(ttc_wss_t *ws) {
 
 	buffer->data = calloc(1, buffer->len + 1);
 	if(!buffer->data) {
-		printf("TTC_WS_ERROR: Allocation error\n");
+		TTC_LOG_ERROR("Allocation error\n");
 		free(buffer);
 		return NULL;
 	}
 
+	readin = 0;
 	buffer->data[buffer->len] = 0;
-	
-	SSL_read(ws->ssl, buffer->data, buffer->len);
+
+	while(readin < buffer->len) {
+		readin += SSL_read(ws->ssl, &buffer->data[readin], buffer->len);
+	}
 
 	pthread_mutex_unlock(&ws->rlock);
 
-	buffer->close_code = buffer->data[0] | buffer->data[1] ;
-
+	if (buffer->opcode == TTC_WS_CONN_CLOSE_FRAME) {
+		ws->closed = 1;
+		buffer->close_code = ttc_ws_endian_swap16(*((uint16_t*)buffer->data));
+	}
 	return buffer;
 }
 
@@ -503,7 +510,7 @@ int ttc_wss_write(ttc_wss_t *ws, ttc_ws_wrreq_t req) {
 	int ext_pos;
 
 	if(ws->closed) {
-		printf("TTC_WS_ERROR: WS is closed\n");
+		TTC_LOG_WARN("WS is closed\n");
 		return 1;
 	}
 
@@ -515,7 +522,7 @@ int ttc_wss_write(ttc_wss_t *ws, ttc_ws_wrreq_t req) {
 
 	frame = calloc(1, len_needed + 1);
 	if(!frame) {
-		printf("TTC_WS_ERROR: (%s)Allocation Error\n", __func__);
+		TTC_LOG_ERROR("Allocation Error\n");
 		return 1;
 	}
 
@@ -579,8 +586,8 @@ ttc_wss_t *ttc_wss_create_from_SSL(SSL *sslsock, const char *host) {
 	
 	ws_out = calloc(1, sizeof(ttc_wss_t));
 	
-	if(!request) {
-		printf("TTC_WS_ERROR: (%s) Allocation Error\n", __func__);
+	if(!ws_out) {
+		TTC_LOG_ERROR("Allocation Error\n");
 		return NULL;
 	}
 
@@ -590,15 +597,15 @@ ttc_wss_t *ttc_wss_create_from_SSL(SSL *sslsock, const char *host) {
 	pthread_mutex_init(&ws_out->rlock, NULL);
 
 	ws_key_raw = ttc_random_array(16);
-	if(!request) {
-		printf("TTC_WS_ERROR: (%s) Allocation Error\n", __func__);
+	if(!ws_key_raw) {
+		TTC_LOG_ERROR("Allocation Error\n");
 		free(ws_out);
 		return NULL;
 	}
 
 	b64key = ttc_b64_encode(ws_key_raw, 16);
-	if(!request) {
-		printf("TTC_WS_ERROR: (%s) Allocation Error\n", __func__);
+	if(!b64key) {
+		TTC_LOG_ERROR("Allocation Error\n");
 		free(ws_key_raw);
 		free(ws_out);
 		return NULL;
@@ -608,7 +615,7 @@ ttc_wss_t *ttc_wss_create_from_SSL(SSL *sslsock, const char *host) {
 
 	request = calloc(1, length + 1);
 	if(!request) {
-		printf("TTC_WS_ERROR: (%s) Allocation Error\n", __func__);
+		TTC_LOG_ERROR("Allocation Error\n");
 		free(b64key);
 		free(ws_key_raw);
 		free(ws_out);
@@ -621,7 +628,7 @@ ttc_wss_t *ttc_wss_create_from_SSL(SSL *sslsock, const char *host) {
 	
 	response = ttc_https_get_response(sslsock);
 	if(response->status != 101) {
-		printf("ttc-ws: websocket request responded with invalid status code %d\n", response->status);
+		TTC_LOG_ERROR("websocket request responded with invalid status code %d\n", response->status);
 		free(ws_out);
 		ws_out = NULL;
 	}
@@ -651,21 +658,21 @@ ttc_wss_t *ttc_wss_create_from_host(const char *host, const char *port, SSL_CTX 
 	
 	res = getaddrinfo(host, port, NULL, &info);
 	if(res != 0) {
-		printf("%s(%d)(%s): %m\n", __FUNCTION__, __LINE__, gai_strerror(res));
+		TTC_LOG_ERROR("getaddrinfo %s", gai_strerror(res));
 		return NULL;
 	}
 
 	sockfd = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
 	if(sockfd < 0) {
-		printf("%s(%d): %m\n", __FUNCTION__, __LINE__);
+		TTC_LOG_ERROR("Socket error %s\n", strerror(errno));
 		freeaddrinfo(info);
-		return NULL;	
+		return NULL;
 	}
 
 	res = connect(sockfd, info->ai_addr, (int)info->ai_addrlen);
 	freeaddrinfo(info);
 	if(res != 0) {
-		printf("%s(%d): %m\n", __FUNCTION__, __LINE__);
+		TTC_LOG_ERROR("connect error %s\n", strerror(errno));
 		close(sockfd);
 		return NULL;	
 	}
@@ -673,7 +680,7 @@ ttc_wss_t *ttc_wss_create_from_host(const char *host, const char *port, SSL_CTX 
 	ssl = SSL_new(ctx);
 	if(ssl == NULL) {
 		close(sockfd);
-		printf("%s(%d): %m\n", __FUNCTION__, __LINE__);
+		TTC_LOG_ERROR("SSL_new error %s\n", strerror(errno));
 		return NULL;	
 	}
 	
@@ -683,7 +690,7 @@ ttc_wss_t *ttc_wss_create_from_host(const char *host, const char *port, SSL_CTX 
 	if(res != 1) {
 		close(sockfd);
 		SSL_free(ssl);
-		printf("%s(%d): %m\n", __FUNCTION__, __LINE__);
+		TTC_LOG_ERROR("SSL_connect error %s\n", strerror(errno));
 		return NULL;
 	}
 
