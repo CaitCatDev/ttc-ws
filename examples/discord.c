@@ -14,7 +14,7 @@
 
 #include <pthread.h>
 
-#include <ttc_ws.h>
+#include <ttc-ws.h>
 #include <signal.h>
 
 int setup_socket(const char *host, const char *port) {
