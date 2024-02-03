@@ -346,7 +346,7 @@ int ttc_ws_write(ttc_ws_t *ws, ttc_ws_wrreq_t req) {
 
 
 ttc_ws_buffer_t *ttc_ws_read(ttc_ws_t *ws) {
-	ttc_ws_buffer_t *buffer;
+	ttc_ws_buffer_t buffer = {0};
 	uint8_t opcode, len;
 	uint16_t len16;
 	uint64_t len64;
@@ -361,12 +361,6 @@ ttc_ws_buffer_t *ttc_ws_read(ttc_ws_t *ws) {
 		return NULL;
 	}
 
-	buffer = calloc(1, sizeof(*buffer));
-	if(!buffer) {
-		TTC_LOG_ERROR("TTC_WS_ERROR: allocation error\n");
-		return NULL;
-	}	
-
 	pthread_mutex_lock(&ws->rlock);
 
 	recv(ws->socket, &opcode, 1, 0);
@@ -374,8 +368,8 @@ ttc_ws_buffer_t *ttc_ws_read(ttc_ws_t *ws) {
 	recv(ws->socket, &len, 1, 0);
 
 
-	buffer->fin = opcode & TTC_WS_FRAME_FINAL;
-	buffer->opcode = opcode & 0x7f;
+	buffer.fin = opcode & TTC_WS_FRAME_FINAL;
+	buffer.opcode = opcode & 0x7f;
 
 	len = len & 0x7f;
 	if(len == 126) {
@@ -383,38 +377,47 @@ ttc_ws_buffer_t *ttc_ws_read(ttc_ws_t *ws) {
 #if BYTE_ORDER == LITTLE_ENDIAN
 		len16 = ttc_ws_endian_swap16(len16);
 #endif
-		buffer->len = len16;
+		buffer.len = len16;
 	} else if(len == 127) {
 		recv(ws->socket, &len64, 8, 0);
 #if BYTE_ORDER == LITTLE_ENDIAN
 		len64 = ttc_ws_endian_swap64(len64);
 #endif
-		buffer->len = len64;
+		buffer.len = len64;
 	} else {
-		buffer->len = len;
+		buffer.len = len;
 	}
 
 
-	if (buffer->opcode == TTC_WS_CONN_CLOSE_FRAME) {
+	if (buffer.opcode == TTC_WS_CONN_CLOSE_FRAME) {
 		ws->closed = 1;
 	}
 
-	buffer->data = calloc(1, buffer->len + 1);
-	if(!buffer->data) {
+	buffer.data = calloc(1, buffer.len + 1);
+	if(!buffer.data) {
 		TTC_LOG_ERROR("buffer allocation error\n");
-		free(buffer);
 		return NULL;
 	}
 
-	buffer->data[buffer->len] = 0;
+	buffer.data[buffer.len] = 0;
 	
-	recv(ws->socket, buffer->data, buffer->len, 0);
+	recv(ws->socket, buffer.data, buffer.len, 0);
 
 	pthread_mutex_unlock(&ws->rlock);
 
-	buffer->close_code = buffer->data[0] | buffer->data[1] ;
+	buffer.close_code = buffer.data[0] | buffer.data[1];
 
-	return buffer;
+	ttc_ws_buffer_t *buffer_heap = calloc(1, sizeof(ttc_ws_buffer_t));
+
+	if(!buffer_heap) {
+		TTC_LOG_ERROR("TTC_WS_ERROR: allocation error\n");
+		free(buffer.data);
+		return NULL;
+	}
+
+	memcpy(buffer_heap, &buffer, sizeof(ttc_ws_buffer_t));
+
+	return buffer_heap;
 }
 
 void ttc_ws_buffer_free(ttc_ws_buffer_t *buf) {
@@ -425,7 +428,7 @@ void ttc_ws_buffer_free(ttc_ws_buffer_t *buf) {
 #ifndef LCWL_DISABLE_SSL
 
 ttc_ws_buffer_t *ttc_wss_read(ttc_wss_t *ws) {
-	ttc_ws_buffer_t *buffer;
+	ttc_ws_buffer_t buffer = {0};
 	uint8_t opcode, len;
 	uint16_t len16;
 	uint64_t len64;
@@ -441,12 +444,6 @@ ttc_ws_buffer_t *ttc_wss_read(ttc_wss_t *ws) {
 		return NULL;
 	}
 
-	buffer = calloc(1, sizeof(*buffer));
-	if(!buffer) {
-		TTC_LOG_ERROR("Allocation Error\n");
-		return NULL;
-	}
-
 	pthread_mutex_lock(&ws->rlock);
 
 	SSL_read(ws->ssl, &opcode, 1);
@@ -454,8 +451,8 @@ ttc_ws_buffer_t *ttc_wss_read(ttc_wss_t *ws) {
 	SSL_read(ws->ssl, &len, 1);
 
 
-	buffer->fin = opcode & TTC_WS_FRAME_FINAL;
-	buffer->opcode = opcode & 0x7f;
+	buffer.fin = opcode & TTC_WS_FRAME_FINAL;
+	buffer.opcode = opcode & 0x7f;
 
 	len = len & 0x7f;
 	if(len == 126) {
@@ -463,43 +460,51 @@ ttc_ws_buffer_t *ttc_wss_read(ttc_wss_t *ws) {
 #if BYTE_ORDER == LITTLE_ENDIAN
 		len16 = ttc_ws_endian_swap16(len16);
 #endif
-		buffer->len = len16;
+		buffer.len = len16;
 	} else if(len == 127) {
 		SSL_read(ws->ssl, &len64, 8);
 #if BYTE_ORDER == LITTLE_ENDIAN
 		len64 = ttc_ws_endian_swap64(len64);
 #endif
-		buffer->len = len64;
+		buffer.len = len64;
 	} else {
-		buffer->len = len;
+		buffer.len = len;
 	}
 
 
-	if (buffer->opcode == TTC_WS_CONN_CLOSE_FRAME) {
+	if (buffer.opcode == TTC_WS_CONN_CLOSE_FRAME) {
 		ws->closed = 1;
 	}
 
-	buffer->data = calloc(1, buffer->len + 1);
-	if(!buffer->data) {
+	buffer.data = calloc(1, buffer.len + 1);
+	if(!buffer.data) {
 		TTC_LOG_ERROR("Allocation error\n");
-		free(buffer);
 		return NULL;
 	}
 
 	readin = 0;
-	buffer->data[buffer->len] = 0;
+	buffer.data[buffer.len] = 0;
 
-	while(readin < buffer->len) {
-		readin += SSL_read(ws->ssl, &buffer->data[readin], buffer->len);
+	while(readin < buffer.len) {
+		readin += SSL_read(ws->ssl, &buffer.data[readin], buffer.len);
 	}
 
 	pthread_mutex_unlock(&ws->rlock);
 
-	if (buffer->opcode == TTC_WS_CONN_CLOSE_FRAME) {
+	if (buffer.opcode == TTC_WS_CONN_CLOSE_FRAME) {
 		ws->closed = 1;
-		buffer->close_code = ttc_ws_endian_swap16(*((uint16_t*)buffer->data));
+		buffer.close_code = ttc_ws_endian_swap16(*((uint16_t*)buffer.data));
 	}
-	return buffer;
+
+  ttc_ws_buffer_t *buffer_heap = calloc(1, sizeof(ttc_ws_buffer_t));
+  if (!buffer_heap) {
+    TTC_LOG_ERROR("TTC_WS_ERROR: allocation error\n");
+    free(buffer.data);
+    return NULL;
+  }
+  memcpy(buffer_heap, &buffer, sizeof(ttc_ws_buffer_t));
+
+	return buffer_heap;
 }
 
 int ttc_wss_write(ttc_wss_t *ws, ttc_ws_wrreq_t req) {
