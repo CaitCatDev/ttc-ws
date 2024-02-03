@@ -30,7 +30,7 @@ Lightweight C WebSocket library (ttc_ws, -lttc_ws)
 
 .B ttc_ws_write, ttc_wss_write. These functions take in a ttc_ws_wrreq_t structure and will write the data provided in that structure to the underlying socket. Applying any rules provided in the write request, e.g. masking the data, setting final or opcode bits, setting length.
 
-.B ttc_ws_free, ttc_wss_free, ttc_ws_buffer_free. These functions free ttc_ws_t, ttc_wss_t and ttc_ws_buffer_t structure pointers. These functions return a void aka nothing as they SHOULD NOT FAIL unless you provide a bad pointer. Or a pointer to a type that is not ttc_ws_t or ttc_wss_t.
+.B ttc_ws_free, ttc_wss_free, ttc_ws_buffer_free. These functions free ttc_ws_t, ttc_wss_t and ttc_ws_buffer_t structure pointers. These functions return a void aka nothing as they SHOULD NOT FAIL unless you provide a bad pointer. Or a pointer to a type that is not ttc_ws_t or ttc_wss_t. If their argument is a NULL pointer no action will be performed as in free().
 
 .SH RETURN VALUES
 .nf

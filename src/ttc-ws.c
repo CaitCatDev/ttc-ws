@@ -265,12 +265,14 @@ ttc_ws_t *ttc_ws_create_from_host(const char *host, const char *port) {
 }
 
 void ttc_ws_free(ttc_ws_t *ws) {
-	pthread_mutex_destroy(&ws->wlock);
-	pthread_mutex_destroy(&ws->rlock);
+	if (ws) {
+		pthread_mutex_destroy(&ws->wlock);
+		pthread_mutex_destroy(&ws->rlock);
 
-	close(ws->socket);
+		close(ws->socket);
 
-	free(ws);
+		free(ws);
+	}
 }
 
 
@@ -421,8 +423,10 @@ ttc_ws_buffer_t *ttc_ws_read(ttc_ws_t *ws) {
 }
 
 void ttc_ws_buffer_free(ttc_ws_buffer_t *buf) {
-	free(buf->data);
-	free(buf);
+	if (buf) {
+		free(buf->data);
+		free(buf);
+	}
 }
 
 #ifndef LCWL_DISABLE_SSL
